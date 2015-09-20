@@ -18,7 +18,7 @@ import org.slf4j.LoggerFactory;
 public class InfluxdbHttp implements Influxdb{
   private static final Logger logger = LoggerFactory.getLogger(InfluxdbHttp.class);
   private static final String URL_STR = "http://%s:%d/write?db=%s&u=%s&p=%s";
-  private static final  int     MAX_SIZE = 100;//防止一次网络传输大量数据，减少数据丢失概率
+  private static final  int     MAX_SIZE = 30;//防止一次网络传输大量数据，减少数据过多造成网络拥堵
   private static final  int     BAD_REQUEST_CODE = 400;//influxdb返回400以上状态码都被认为是数据异常
   private long   pointsCount;
   private final  StringBuilder pointsBuffer = new StringBuilder();//缓存即将发送的point数据
@@ -125,6 +125,9 @@ public class InfluxdbHttp implements Influxdb{
 
   @Override
   public void writeData(SinglePoint singlePoint) throws InfluxdbException {
+    if (singlePoint.getFieldMap().isEmpty()) {
+      return;
+    }
     pointsBuffer.append(singlePoint.toString()).append("\n");
     if (++pointsCount >MAX_SIZE) {
      flush();
@@ -135,7 +138,10 @@ public class InfluxdbHttp implements Influxdb{
   public void flush() throws InfluxdbException {
     try { 
          String data = pointsBuffer.toString().trim();
-         request(data);
+         if (data == null || data.trim().length()==0) {
+            return;
+         }
+         request(data.trim());
          if (logger.isDebugEnabled()) {
              logger.debug("Writing Data To Influxdb Succesfully With Data :\n {}",data);
         }
@@ -182,11 +188,13 @@ public class InfluxdbHttp implements Influxdb{
       if (conn != null) {
         InputStream es = ((HttpURLConnection) conn).getErrorStream();
         int ret = 0;
-        while ((ret = es.read(buf)) > 0) { // read the response body
+        while (es!=null && (ret = es.read(buf)) > 0) { // read the response body
           os.write(buf, 0, ret);
         }
+        if (es != null) {
+          es.close();// close the errorstream
+        }
         msg = msg +";Reason:"+ new String(os.toByteArray(), "utf-8");
-        es.close();// close the errorstream
       }
       throw new IOException(msg, e.getCause());
     }

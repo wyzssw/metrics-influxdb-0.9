@@ -242,11 +242,14 @@ public class InfluxdbReporter extends ScheduledReporter {
     influxdb.writeData(buildSinglePoint(countername, tagMap, fieldMap, timestamp));
   }
 
-  private void reportGauge(String name, Gauge guage, long timestamp) throws InfluxdbException {
-    String guagename = makeName(appName, name, "guage");
+  private void reportGauge(String name, Gauge gauge, long timestamp) throws InfluxdbException {
+    String gaugename = makeName(appName, name, "gauge");
     Map<String, Object> fieldMap = new HashMap<String, Object>();
-    fieldMap.put("value", String.valueOf(guage.getValue()));
-    influxdb.writeData(buildSinglePoint(guagename, tagMap, fieldMap, timestamp));
+    if (gauge.getValue() instanceof Number) {
+      fieldMap.put("value", gauge.getValue());
+      influxdb.writeData(buildSinglePoint(gaugename, tagMap, fieldMap, timestamp));
+    }
+   
   }
 
   private void reportHistogram(String name, Histogram histogram, long timestamp)
@@ -294,8 +297,18 @@ public class InfluxdbReporter extends ScheduledReporter {
 
   private static SinglePoint buildSinglePoint(String name, Map<String, String> tagMap,
       Map<String, Object> fieldMap, long timestamp) {
+    Map<String, Object> finalMap = new HashMap<String, Object>();
+    for (Map.Entry<String, Object> entry : fieldMap.entrySet()) {
+      if (entry.getValue() instanceof Number) {
+          if (entry.getValue() instanceof Double) {
+            finalMap.put(entry.getKey(), String.format("%.2f", entry.getValue()));
+          }else {
+            finalMap.put(entry.getKey(), entry.getValue());
+          }
+      }
+    }
     SinglePoint singlePoint =
-        SinglePoint.newBuilder(name).addAllTag(tagMap).addAllField(fieldMap)
+        SinglePoint.newBuilder(name).addAllTag(tagMap).addAllField(finalMap)
             .setTimestamp(timestamp).build();
     return singlePoint;
   }
@@ -314,13 +327,13 @@ public class InfluxdbReporter extends ScheduledReporter {
 
   private static String getHost(String pidHost) {
     int index = pidHost.indexOf('@');
+    String retHost = String.valueOf(System.currentTimeMillis());
     if (index == -1) {
-      return pidHost;
+      retHost =  pidHost;
     } else if (index + 1 <= pidHost.length()) {
-      return pidHost.substring(index + 1);
-    } else {
-      return String.valueOf(System.currentTimeMillis());
-    }
+      retHost =  pidHost.substring(index + 1);
+    } 
+    return retHost.replaceAll("\\.", "_");
   }
 
   private static String getPid(String pidHost) {
@@ -341,4 +354,5 @@ public class InfluxdbReporter extends ScheduledReporter {
     }
     return pidHost;
   }
+  
 }
