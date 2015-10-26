@@ -259,16 +259,15 @@ public class InfluxdbReporter extends ScheduledReporter {
     Map<String, Object> fieldMap = new HashMap<String, Object>();
     fieldMap.put("count", histogram.getCount());
     fieldMap.put("max", snapshot.getMax());
-    fieldMap.put("mean", snapshot.getMin());
+    fieldMap.put("mean", snapshot.getMean());
     fieldMap.put("min", snapshot.getMin());
     fieldMap.put("stddev", snapshot.getStdDev());
     fieldMap.put("p50", snapshot.getMedian());
-    fieldMap.put("p75", snapshot.getMedian());
-    fieldMap.put("p50", snapshot.getMedian());
-    fieldMap.put("p95", snapshot.getMedian());
-    fieldMap.put("p98", snapshot.getMedian());
-    fieldMap.put("p99", snapshot.getMedian());
-    fieldMap.put("p999", snapshot.getMedian());
+    fieldMap.put("p75", snapshot.get75thPercentile());
+    fieldMap.put("p95", snapshot.get95thPercentile());
+    fieldMap.put("p98", snapshot.get98thPercentile());
+    fieldMap.put("p99", snapshot.get99thPercentile());
+    fieldMap.put("p999", snapshot.get999thPercentile());
     influxdb.writeData(buildSinglePoint(histogramname, tagMap, fieldMap, timestamp));
   }
 
@@ -288,7 +287,6 @@ public class InfluxdbReporter extends ScheduledReporter {
     fieldMap.put("stddev", convertDuration(snapshot.getStdDev()));
     fieldMap.put("p50", convertDuration(snapshot.getMedian()));
     fieldMap.put("p75", convertDuration(snapshot.get75thPercentile()));
-    fieldMap.put("p95", convertDuration(snapshot.get95thPercentile()));
     fieldMap.put("p95", convertDuration(snapshot.get95thPercentile()));
     fieldMap.put("p99", convertDuration(snapshot.get99thPercentile()));
     fieldMap.put("p999", convertDuration(snapshot.get999thPercentile()));
